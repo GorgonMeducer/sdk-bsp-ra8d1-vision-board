@@ -196,7 +196,6 @@ typedef void scene_loader_t(void);
 
 static scene_loader_t *const c_SceneLoaders[] =
 {
-
 #if 1
     scene_basics_loader,
     scene_bubble_charging_loader,
@@ -216,7 +215,8 @@ static scene_loader_t *const c_SceneLoaders[] =
     scene_fitness_loader,
     scene_audiomark_loader,
 #else
-    scene_bubble_charging_loader,
+    scene_basics_loader,
+    //scene_bubble_charging_loader,
 #endif
 };
 
@@ -278,6 +278,59 @@ void hal_entry(void)
     }
 #endif  /* RTE_Acceleration_Arm_2D */
 }
+
+
+#if __IS_COMPILER_ARM_COMPILER__
+
+extern 
+void $Super$$Disp0_DrawBitmap (uint32_t x, uint32_t y, uint32_t width, uint32_t height, const uint8_t *bitmap);
+
+void $Sub$$Disp0_DrawBitmap (uint32_t x, uint32_t y, uint32_t width, uint32_t height, const uint8_t *bitmap) 
+{
+#if __DISP0_CFG_COLOUR_DEPTH__ == 8
+    extern
+    void __arm_2d_impl_gray8_to_rgb565( uint8_t *__RESTRICT pchSourceBase,
+                                        int16_t iSourceStride,
+                                        uint16_t *__RESTRICT phwTargetBase,
+                                        int16_t iTargetStride,
+                                        arm_2d_size_t *__RESTRICT ptCopySize);
+
+    static uint16_t s_hwFrameBuffer[__DISP0_CFG_SCEEN_WIDTH__ * __DISP0_CFG_SCEEN_HEIGHT__];
+    
+    arm_2d_size_t size = {
+        .iWidth = width,
+        .iHeight = height,
+    };
+    __arm_2d_impl_gray8_to_rgb565( (uint8_t *)bitmap,
+                                    width,
+                                    (uint16_t *)s_hwFrameBuffer,
+                                    width,
+                                    &size);
+    $Super$$Disp0_DrawBitmap(x, y, width, height, (const uint8_t *)s_hwFrameBuffer);
+#elif __DISP0_CFG_COLOUR_DEPTH__ == 32
+    extern
+    void __arm_2d_impl_cccn888_to_rgb565(uint32_t *__RESTRICT pwSourceBase,
+                                        int16_t iSourceStride,
+                                        uint16_t *__RESTRICT phwTargetBase,
+                                        int16_t iTargetStride,
+                                        arm_2d_size_t *__RESTRICT ptCopySize);
+
+    arm_2d_size_t size = {
+        .iWidth = width,
+        .iHeight = height,
+    };
+    __arm_2d_impl_cccn888_to_rgb565((uint32_t *)bitmap,
+                                    width,
+                                    (uint16_t *)bitmap,
+                                    width,
+                                    &size);
+    $Super$$Disp0_DrawBitmap(x, y, width, height, bitmap);
+#else
+    $Super$$Disp0_DrawBitmap(x, y, width, height, bitmap);
+#endif
+}
+
+#endif
 
 #if defined(__clang__)
     #pragma clang diagnostic pop
